@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+
+    {
+      "name": "Launch test function with direnv",
+      "type": "go",
+      "request": "launch",
+      "mode": "exec",
+      "program": "direnv",
+      "args": ["exec", ".", "go", "test", "-run", "TestUserStore", "./asyncapi/store"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Go Tests",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/store",
+      "env": {
+        "DATABASE_URL": "postgres://postgres:1234@127.0.0.1:5434/mydb?sslmode=disable"
+      }
+    }
+  ]
+}
