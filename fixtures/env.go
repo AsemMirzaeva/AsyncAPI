@@ -1,4 +1,4 @@
-package features
+package fixtures
 
 import (
 	"asyncapi/config"
