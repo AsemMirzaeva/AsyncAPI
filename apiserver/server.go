@@ -3,15 +3,23 @@ package apiserver
 import (
 	"asyncapi/config"
 	"context"
+	"log/slog"
+	"net"
 	"net/http"
+	"sync"
+	"time"
 )
 
 type ApiServer struct {
-	Config *config.Config
+	config *config.Config
+	logger *slog.Logger
 }
 
-func New(config *config.Config) *ApiServer {
-	return &ApiServer{Config: config}
+func New(config *config.Config, logger *slog.Logger) *ApiServer {
+	return &ApiServer{
+		config: config,
+		logger: logger,
+	}
 }
 
 func (s *ApiServer) ping(w http.ResponseWriter, r *http.Request) {
@@ -19,13 +27,37 @@ func (s *ApiServer) ping(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("pong"))
 }
 
-func(s *ApiServer) Start(ctx context.Context) error {
+func (s *ApiServer) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ping", s.ping)
+
+	middleware := NewLoggerMiddleware(s.logger)
+
 	server := &http.Server{
-		Addr: ":5000",
-		Handler: mux,
+		Addr:    net.JoinHostPort(s.config.ApiServerHost, s.config.ApiServerPort),
+		Handler: middleware(mux),
 	}
 
-	return server.ListenAndServe()
+	go func() {
+		s.logger.Info("apiserver running", "port", s.config.ApiServerPort)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.logger.Error("apiserver failed to listen and serve ", "error", err)
+		}
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-ctx.Done()
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			s.logger.Error("apiserver failed to shutdown", "error", err)
+		}
+	}()
+	wg.Wait()
+
+	return nil
 }
