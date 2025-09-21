@@ -71,12 +71,15 @@ func (j *JwtManager) GenerateTokenPair(userId uuid.UUID) (*TokenPair, error) {
 	key := []byte(j.config.JwtSecret)
 	var err error
 
-	jwtAccessToken.Raw, err = jwtAccessToken.SignedString(key)
+	signedAccessToken, err := jwtAccessToken.SignedString(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign access token: %w", err)
 	}
 
-
+	accessToken, err := j.Parse(signedAccessToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse access token: %w", err)
+	}
 
 	jwtRefreshToken := jwt.NewWithClaims(signingMethod, CustomClaims{
 		TokenType: "refresh",
@@ -88,13 +91,18 @@ func (j *JwtManager) GenerateTokenPair(userId uuid.UUID) (*TokenPair, error) {
 		},
 	})
 
-	jwtRefreshToken.Raw, err = jwtRefreshToken.SignedString(key)
+	signedRefreshToken, err := jwtRefreshToken.SignedString(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign refresh token: %w", err)
 	}
 
+	refreshToken, err := j.Parse(signedRefreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse refresh token: %w", err)
+	}
+
 	return &TokenPair{
-		AccessToken:  jwtAccessToken,
-		RefreshToken: jwtRefreshToken,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}, nil
 }
