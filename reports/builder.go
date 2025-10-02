@@ -61,5 +61,5 @@ func (b *ReportBuilder) Build(ctx context.Context, userId uuid.UUID, reportId uu
 
 	var buffer bytes.Buffer
 	gzipWriter := gzip.NewWriter(&buffer)
-	
+	header := []string{"name", "id"}
 }
